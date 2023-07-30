@@ -1,4 +1,7 @@
 // gcp.go
+// TODO need to double check but I believe we need to sanatize the output from good for any keys
+//
+
 package tools
 
 // Add your GCP-specific functions and structures here.
@@ -11,7 +14,8 @@ import (
 	"strings"
 )
 
-/ GetAWSInstanceIdentityInfo retrieves the instance identity document and tags from the AWS metadata service.
+
+// GetAWSInstanceIdentityInfo retrieves the instance identity document and tags from the AWS metadata service.
 func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 	//Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true
 	documentURL := "http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true"
