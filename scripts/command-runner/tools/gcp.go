@@ -1,6 +1,5 @@
 // gcp.go
-// TODO need to double check but I believe we need to sanatize the output from good for any keys
-//
+// 
 
 package tools
 
@@ -12,10 +11,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"encoding/json"
 )
 
 
-// GetAWSInstanceIdentityInfo retrieves the instance identity document and tags from the AWS metadata service.
+// GetGCPInstanceIdentityInfo retrieves the instance identity document and tags from the AWS metadata service.
 func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 	//Metadata-Flavor: Google" "http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true
 	documentURL := "http://metadata.google.internal/computeMetadata/v1/instance/?recursive=true"
@@ -23,6 +23,15 @@ func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 	if err != nil {
 		return err
 	}
+	// Sanitize sensitive information from documentOUT
+	sanitizedDocument, err := sanitizeGCPInstanceDocument(documentOUT)
+	if err != nil {
+		return err
+	}
+	
+		fmt.Println("Sanitized Instance Identity Document:")
+		fmt.Println(string(sanitizedDocument)) // Debug print to see the sanitized document content
+	
 	fmt.Println("Instance Identity Document Raw:")
 	fmt.Println(string(documentOUT)) // Debug print to see the raw documentOUT content
 
@@ -32,14 +41,14 @@ func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 		return err
 	}
 
-	// Append the Base64 encoded documentOUT and metadataOUT to the JSON data
-
+	// Append the Base64 encoded sanitizedDocument to the JSON data
 	existingJSONData = append(existingJSONData, JSONData{
 		Command:     "Instance Identity Document",
 		Description: "GCP Instance Identity Document",
-		Output:      EncodeToBase64(string(documentOUT)),
+		Output:      EncodeToBase64(string(sanitizedDocument)),
 		MonitorTag:  "GCP",
 	})
+
 
 	existingJSONData = append(existingJSONData)
 
@@ -50,7 +59,24 @@ func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 
 	return nil
 }
+func sanitizeGCPInstanceDocument(documentOUT []byte) ([]byte, error) {
+	// Unmarshal JSON into a map
+	var documentMap map[string]interface{}
+	if err := json.Unmarshal(documentOUT, &documentMap); err != nil {
+		return nil, err
+	}
 
+	// Remove the "ssh-keys" field from the map
+	delete(documentMap["attributes"].(map[string]interface{}), "ssh-keys")
+
+	// Marshal the modified map back into JSON
+	sanitizedDocument, err := json.Marshal(documentMap)
+	if err != nil {
+		return nil, err
+	}
+
+	return sanitizedDocument, nil
+}
 func getGCPEndpoint(url string) ([]byte, error) {
 	// Clean the URL to remove unwanted characters
 	url = strings.TrimSpace(url)
