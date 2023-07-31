@@ -1,11 +1,14 @@
+package main
+
+/*
 //TODO LOGGING
-//TODO GCP
 //TODO AZURE
-//TODO file parser
+//TODO Fix directory paths they're currently super ugly but hey this is the uglystick
+//TODO file parser  --- needs fix for -server flag but can be used just the same may not even need a -server flag period come to think of it
 //TODO SWARM
 //TODO HAS
-
-package main
+//TODO Error parsing files at the instance level breaks it so if it cant parse the file its looking for its stops.
+*/
 
 import (
 	"command-runner/tools"
@@ -24,6 +27,7 @@ func init() {
 	flag.StringVar(&outputJSONFilePath, "output", "out.json", "Path to the output JSON file")
 	flag.StringVar(&yamlCommandsFilePath, "comyaml", "commands.yaml", "Path to the YAML file containing shell commands")
 	flag.StringVar(&cloudProvider, "cloud", "", "Cloud provider (aws, gcp, or azure)")
+
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
@@ -32,11 +36,11 @@ func init() {
 }
 
 func main() {
-	// Define a flag for the instance argument
-	instanceArg := flag.String("instance", "", "Instance argument for the command-runner")
+	var instanceArg string
+	var serverArg bool
 
-	// Define a flag for the server argument
-	serverArg := flag.Bool("server", false, "Server argument for the command-runner")
+	flag.StringVar(&instanceArg, "instance", "", "Instance argument for the command-runner")
+	flag.BoolVar(&serverArg, "server", false, "Server argument for the command-runner")
 
 	flag.Parse()
 
@@ -44,14 +48,19 @@ func main() {
 	if cloudProvider != "" {
 		switch cloudProvider {
 		case "aws":
-			// Logic to handle AWS-related functionality
+			//Logic to handle AWS-related functionality
 			err := tools.GetAWSInstanceIdentityInfo(outputJSONFilePath)
 			if err != nil {
 				fmt.Println("Error getting AWS instance identity info:", err)
 				os.Exit(1)
 			}
 		case "gcp":
-			// Add logic to handle GCP-related functionality
+			//Logic to handle GCP-related functionality
+			err := tools.GetGCPInstanceIdentityInfo(outputJSONFilePath)
+			if err != nil {
+				fmt.Println("Error getting GCP instance identity info:", err)
+				os.Exit(1)
+			}
 		case "azure":
 			// Add logic to handle Azure-related functionality
 		default:
@@ -61,7 +70,8 @@ func main() {
 	}
 
 	// Check if the server argument is provided
-	if *serverArg {
+	if serverArg {
+		fmt.Println("Server ARG passed")
 		// Execute and encode server commands
 		serverCommands, err := tools.ReadServerCommandsFromYAML(yamlCommandsFilePath)
 		if err != nil {
@@ -95,7 +105,11 @@ func main() {
 
 		// Append server JSON data to existing data
 		allJSONData := append(existingJSONData, serverJSONData...)
-
+		err = tools.AppendParsedDataToFile(serverJSONData, outputJSONFilePath)
+		if err != nil {
+			fmt.Printf("Error appending server JSON data to %s: %s\n", outputJSONFilePath, err)
+			os.Exit(1)
+		}
 		// Write the updated JSON data back to the file
 		if err := tools.WriteJSONToFile(allJSONData, outputJSONFilePath); err != nil {
 			fmt.Printf("Error writing server JSON data to %s: %s\n", outputJSONFilePath, err)
@@ -108,13 +122,19 @@ func main() {
 			fmt.Println("Error getting hostname:", err)
 			os.Exit(1)
 		}
-
+		// File parsing for the server level
+		err = tools.FileParserFromYAMLConfigServer("/home/perforce/workspace/command-runner/configs/fileparser.yaml", outputJSONFilePath)
+		if err != nil {
+			fmt.Println("Error parsing files at the server level:", err)
+			os.Exit(1)
+		}
 		fmt.Printf("%s Server commands executed and output appended to %s.\n", hostname, outputJSONFilePath)
 	}
 
 	// Check if the instance argument is provided
-	if *instanceArg != "" {
-		// Execute and encode instance commands
+	if instanceArg != "" {
+		fmt.Println("Instance ARG passed")
+
 		instanceCommands, err := tools.ReadInstanceCommandsFromYAML(yamlCommandsFilePath)
 		if err != nil {
 			fmt.Println("Error reading instance commands from YAML:", err)
@@ -130,11 +150,9 @@ func main() {
 		// Create JSON data for instance commands
 		var instanceJSONData []tools.JSONData
 		for i, cmd := range instanceCommands {
-			// Prepend the instance name to the description
-			desc := fmt.Sprintf("p4d instance: [%s] %s", *instanceArg, cmd.Description)
 			instanceJSONData = append(instanceJSONData, tools.JSONData{
 				Command:     cmd.Description,
-				Description: desc,
+				Description: cmd.Description,
 				Output:      base64InstanceOutputs[i],
 				MonitorTag:  cmd.MonitorTag,
 			})
@@ -155,8 +173,13 @@ func main() {
 			fmt.Printf("Error writing instance JSON data to %s: %s\n", outputJSONFilePath, err)
 			os.Exit(1)
 		}
-
-		fmt.Printf("Instance %s commands executed and output appended to %s.\n", *instanceArg, outputJSONFilePath)
+		// File parsing for the instance level
+		err = tools.FileParserFromYAMLConfigInstance("/home/perforce/workspace/command-runner/configs/fileparser.yaml", outputJSONFilePath, instanceArg)
+		if err != nil {
+			fmt.Println("Error parsing files at the instance level:", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Instance %s commands executed and output appended to %s.\n", instanceArg, outputJSONFilePath)
 	}
 
 	if flag.NFlag() == 0 {

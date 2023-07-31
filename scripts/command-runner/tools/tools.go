@@ -3,13 +3,16 @@ package tools
 import (
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"os/exec"
 
 	"gopkg.in/yaml.v2"
 )
-
+//
+// TODO The description for each instance should be relative to their repective instance name when running specific instance commands
+//
 // Define a struct to hold each command's details
 type Command struct {
 	Description string `yaml:"description"`
@@ -18,7 +21,6 @@ type Command struct {
 }
 
 // Define a struct to hold the configuration from the YAML file for instance_commands and server_commands
-//#TODO Is this needed
 type CommandConfig struct {
 	InstanceCommands []Command `yaml:"instance_commands"`
 	ServerCommands   []Command `yaml:"server_commands"`
@@ -109,7 +111,7 @@ func EncodeToBase64(input string) string {
 	return base64.StdEncoding.EncodeToString([]byte(input))
 }
 
-// Function to write JSON data to a file with indentation for human-readability.....Minus the base64 humans don't read that stuff... normally
+// Function to write JSON data to a file with indentation for human-readability
 func WriteJSONToFile(data []JSONData, filePath string) error {
 	jsonString, err := json.MarshalIndent(data, "", "    ") // Use four spaces for indentation
 	if err != nil {
@@ -143,4 +145,22 @@ func ReadJSONFromFile(filePath string) ([]JSONData, error) {
 	}
 
 	return jsonData, nil
+}
+
+func AppendParsedDataToFile(parsedData []JSONData, filePath string) error {
+	// Get the existing JSON data from the file (if it exists)
+	existingJSONData, err := ReadJSONFromFile(filePath)
+	if err != nil && !os.IsNotExist(err) {
+		return fmt.Errorf("error reading existing JSON data from %s: %s", filePath, err)
+	}
+
+	// Append the new JSON data to the existing data
+	allJSONData := append(existingJSONData, parsedData...)
+
+	// Write the updated JSON data back to the file
+	if err := WriteJSONToFile(allJSONData, filePath); err != nil {
+		return fmt.Errorf("error writing JSON data to %s: %s", filePath, err)
+	}
+
+	return nil
 }

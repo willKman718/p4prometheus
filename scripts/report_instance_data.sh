@@ -372,12 +372,12 @@ fi
 if [[ $IsGCP -eq 1 ]]; then
     echo "Doing the GCP meta-pull"
     # DO GCP command-runner stuff
-    $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server -cloud=gcp
+    # $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server -cloud=gcp
 fi
 
 if [[ $IsOnPrem -eq 1 ]]; then
     echo "Doing the OnPrem stuff"
-    $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server -server
+    $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server
 fi
 get_sdp_instances
 findSwarm

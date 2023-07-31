@@ -1,19 +1,18 @@
 // gcp.go
-// 
+//
 
 package tools
 
 // Add your GCP-specific functions and structures here.
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strings"
-	"encoding/json"
 )
-
 
 // GetGCPInstanceIdentityInfo retrieves the instance identity document and tags from the AWS metadata service.
 func GetGCPInstanceIdentityInfo(outputFilePath string) error {
@@ -28,10 +27,10 @@ func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 	if err != nil {
 		return err
 	}
-	
-		fmt.Println("Sanitized Instance Identity Document:")
-		fmt.Println(string(sanitizedDocument)) // Debug print to see the sanitized document content
-	
+
+	fmt.Println("Sanitized Instance Identity Document:")
+	fmt.Println(string(sanitizedDocument)) // Debug print to see the sanitized document content
+
 	fmt.Println("Instance Identity Document Raw:")
 	fmt.Println(string(documentOUT)) // Debug print to see the raw documentOUT content
 
@@ -48,7 +47,6 @@ func GetGCPInstanceIdentityInfo(outputFilePath string) error {
 		Output:      EncodeToBase64(string(sanitizedDocument)),
 		MonitorTag:  "GCP",
 	})
-
 
 	existingJSONData = append(existingJSONData)
 
