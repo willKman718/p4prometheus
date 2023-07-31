@@ -1,6 +1,7 @@
 package main
 
 /*
+//TODO CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING, and some more CLEANING
 //TODO LOGGING
 //TODO AZURE
 //TODO Fix directory paths they're currently super ugly but hey this is the uglystick
