@@ -1,7 +1,7 @@
 #!/bin/bash
-TempLog="/home/perforce/workspace/command-runner/output.log"
+#No longer needed for now TempLog="/home/perforce/workspace/command-runner/output.log"
 commandRunnerPath="/home/perforce/workspace/command-runner/command-runner"
-commandYamlPath="/home/perforce/workspace/command-runner/commands.yaml"
+#No longer need for now commandYamlPath="/home/perforce/workspace/command-runner/commands.yaml"
 rm -f $TempLog
 # report_instance_data.sh
 #
@@ -119,7 +119,8 @@ function work_instance () {
     {
         #Thanks tom
         #TODO Command runner path
-        run_if_master.sh $instance $commandRunnerPath -instance=$instance -output=$TempLog -comyaml=$commandYamlPath
+        #OLD run_if_master.sh $instance $commandRunnerPath -instance=$instance -output=$TempLog -comyaml=$commandYamlPath
+        run_if_master.sh $instance $commandRunnerPath -instance=$instance
     }
 }
 
@@ -360,7 +361,8 @@ fi
 
 if [[ $IsAWS -eq 1 ]]; then
     echo "Doing the AWS meta-pull"
-    $commandRunnerPath -output=$TempLog -yaml=$commandYamlPath -server -cloud=aws
+    #OLD $commandRunnerPath -output=$TempLog -yaml=$commandYamlPath -server -cloud=aws
+    $commandRunnerPath -server -cloud=aws
 fi
 
 if [[ $IsAzure -eq 1 ]]; then
@@ -377,7 +379,9 @@ fi
 
 if [[ $IsOnPrem -eq 1 ]]; then
     echo "Doing the OnPrem stuff"
-    $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server
+    #OLD $commandRunnerPath -output=$TempLog -comyaml=$commandYamlPath -server
+    $commandRunnerPath -server
+    
 fi
 get_sdp_instances
 findSwarm
