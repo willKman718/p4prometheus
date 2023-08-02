@@ -1,39 +1,52 @@
-package main
-
 /*
-//TODO CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING CLEANING, and some more CLEANING
-//TODO LOGGING
-//TODO AZURE
-//TODO Fix directory paths they're currently super ugly but hey this is the uglystick
-//TODO file parser  --- needs fix for -server flag but can be used just the same may not even need a -server flag period come to think of it
-//TODO SWARM
-//TODO HAS
-//TODO Error parsing files at the instance level breaks it so if it cant parse the file its looking for its stops.
+TODO Error parsing files at the instance level breaks it so if it cant parse the file its stops.
 */
+package main
 
 import (
 	"command-runner/tools"
 	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
+
+	"gopkg.in/yaml.v2"
 )
+
+type Config struct {
+	CommandsYAMLPath   string `yaml:"commands_yaml"`
+	FileParserYAMLPath string `yaml:"fileparser_yaml"`
+	OutputJSONPath     string `yaml:"output_json_path"`
+}
 
 var (
 	outputJSONFilePath   string
 	yamlCommandsFilePath string
 	cloudProvider        string
+	configFilePath       string
 )
 
 func init() {
 	flag.StringVar(&outputJSONFilePath, "output", "out.json", "Path to the output JSON file")
-	flag.StringVar(&yamlCommandsFilePath, "comyaml", "commands.yaml", "Path to the YAML file containing shell commands")
+
 	flag.StringVar(&cloudProvider, "cloud", "", "Cloud provider (aws, gcp, or azure)")
+
+	flag.StringVar(&configFilePath, "config", "", "Path to the config file")
 
 	flag.Usage = func() {
 		fmt.Fprintf(os.Stderr, "Usage: %s [OPTIONS]\n", os.Args[0])
 		fmt.Fprintf(os.Stderr, "Options:\n")
 		flag.PrintDefaults()
 	}
+	// Modify the outputJSONFilePath to write to the "output" directory
+	outputJSONFilePath = "output/out.json"
+
+}
+
+// Function to get the absolute path for a file or directory
+func getAbsolutePath(baseDir, relPath string) (string, error) {
+	absPath := filepath.Join(baseDir, relPath)
+	return absPath, nil
 }
 
 func main() {
@@ -44,6 +57,44 @@ func main() {
 	flag.BoolVar(&serverArg, "server", false, "Server argument for the command-runner")
 
 	flag.Parse()
+
+	// If config file path is not provided, use the default
+	if configFilePath == "" {
+		exePath, err := os.Executable()
+		if err != nil {
+			fmt.Println("Error getting executable path:", err)
+			os.Exit(1)
+		}
+
+		configFilePath = filepath.Join(filepath.Dir(exePath), "configs", "config.yaml")
+	}
+
+	// Read the config file
+	configFile, err := os.Open(configFilePath)
+	if err != nil {
+		fmt.Println("Error opening config file:", err)
+		os.Exit(1)
+	}
+	defer configFile.Close()
+
+	var config Config
+	decoder := yaml.NewDecoder(configFile)
+	if err := decoder.Decode(&config); err != nil {
+		fmt.Println("Error decoding config file:", err)
+		os.Exit(1)
+	}
+
+	// Retrieve the paths from the config struct
+	configsDir := filepath.Dir(configFilePath)
+	yamlCommandsFilePath = filepath.Join(configsDir, config.CommandsYAMLPath)
+	outputJSONFilePath = filepath.Join(config.OutputJSONPath)
+
+	// Get absolute path for "configs/commands.yaml"
+	//, err := getAbsolutePath(configsDir, config.CommandsYAMLPath)
+	if err != nil {
+		fmt.Println("Error getting absolute path for commands.yaml:", err)
+		os.Exit(1)
+	}
 
 	// If -cloud is provided, check if it's a valid cloud provider
 	if cloudProvider != "" {
@@ -72,7 +123,7 @@ func main() {
 
 	// Check if the server argument is provided
 	if serverArg {
-		fmt.Println("Server ARG passed")
+		//		fmt.Println("Server ARG passed")
 		// Execute and encode server commands
 		serverCommands, err := tools.ReadServerCommandsFromYAML(yamlCommandsFilePath)
 		if err != nil {
@@ -90,7 +141,7 @@ func main() {
 		var serverJSONData []tools.JSONData
 		for i, cmd := range serverCommands {
 			serverJSONData = append(serverJSONData, tools.JSONData{
-				Command:     cmd.Description,
+				Command:     cmd.Command,
 				Description: cmd.Description,
 				Output:      base64ServerOutputs[i],
 				MonitorTag:  cmd.MonitorTag,
@@ -116,27 +167,32 @@ func main() {
 			fmt.Printf("Error writing server JSON data to %s: %s\n", outputJSONFilePath, err)
 			os.Exit(1)
 		}
-
-		// Get the hostname of the server
-		hostname, err := os.Hostname()
-		if err != nil {
-			fmt.Println("Error getting hostname:", err)
-			os.Exit(1)
-		}
+		/*
+			// Get the hostname of the server
+			hostname, err := os.Hostname()
+			if err != nil {
+				fmt.Println("Error getting hostname:", err)
+				os.Exit(1)
+			}
+		*/
 		// File parsing for the server level
-		err = tools.FileParserFromYAMLConfigServer("/home/perforce/workspace/command-runner/configs/fileparser.yaml", outputJSONFilePath)
+		//		fmt.Println("File Parser YAML Path (Server):", config.FileParserYAMLPath) // Print the file parser YAML path for server
+
+		/* NEEDS TO BE LOOKED INTO SILLY APPENDING and file path issues
+		err = tools.FileParserFromYAMLConfigServer(config.FileParserYAMLPath, outputJSONFilePath)
 		if err != nil {
 			fmt.Println("Error parsing files at the server level:", err)
 			os.Exit(1)
 		}
 		fmt.Printf("%s Server commands executed and output appended to %s.\n", hostname, outputJSONFilePath)
+		*/
 	}
 
 	// Check if the instance argument is provided
 	if instanceArg != "" {
-		fmt.Println("Instance ARG passed")
+		//fmt.Println("Instance ARG passed")
 
-		instanceCommands, err := tools.ReadInstanceCommandsFromYAML(yamlCommandsFilePath)
+		instanceCommands, err := tools.ReadInstanceCommandsFromYAML(yamlCommandsFilePath, instanceArg)
 		if err != nil {
 			fmt.Println("Error reading instance commands from YAML:", err)
 			os.Exit(1)
@@ -152,7 +208,7 @@ func main() {
 		var instanceJSONData []tools.JSONData
 		for i, cmd := range instanceCommands {
 			instanceJSONData = append(instanceJSONData, tools.JSONData{
-				Command:     cmd.Description,
+				Command:     cmd.Command,
 				Description: cmd.Description,
 				Output:      base64InstanceOutputs[i],
 				MonitorTag:  cmd.MonitorTag,
@@ -175,12 +231,17 @@ func main() {
 			os.Exit(1)
 		}
 		// File parsing for the instance level
-		err = tools.FileParserFromYAMLConfigInstance("/home/perforce/workspace/command-runner/configs/fileparser.yaml", outputJSONFilePath, instanceArg)
+		//fmt.Println("File Parser YAML Path (Instance):", config.FileParserYAMLPath) // Print the file parser YAML path for instance
+		err = tools.FileParserFromYAMLConfigInstance(config.FileParserYAMLPath, outputJSONFilePath, instanceArg)
 		if err != nil {
 			fmt.Println("Error parsing files at the instance level:", err)
 			os.Exit(1)
 		}
-		fmt.Printf("Instance %s commands executed and output appended to %s.\n", instanceArg, outputJSONFilePath)
+		//fmt.Printf("Instance %s commands executed and output appended to %s.\n", instanceArg, outputJSONFilePath)
+	}
+
+	if flag.NFlag() == 0 {
+		flag.Usage()
 	}
 
 	if flag.NFlag() == 0 {

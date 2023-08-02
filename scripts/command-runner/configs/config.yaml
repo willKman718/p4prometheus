@@ -1,0 +1,3 @@
+commands_yaml: "commands.yaml"
+fileparser_yaml: "configs/fileparser.yaml"
+output_json_path: "output/out.json"

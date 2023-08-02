@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -10,7 +11,7 @@ import (
 
 	"gopkg.in/yaml.v2"
 )
-//
+
 // TODO The description for each instance should be relative to their repective instance name when running specific instance commands
 //
 // Define a struct to hold each command's details
@@ -34,7 +35,8 @@ type JSONData struct {
 }
 
 // Function to read instance_commands from the YAML file
-func ReadInstanceCommandsFromYAML(filePath string) ([]Command, error) {
+// Function to read instance_commands from the YAML file
+func ReadInstanceCommandsFromYAML(filePath, instanceArg string) ([]Command, error) {
 	yamlFile, err := ioutil.ReadFile(filePath)
 	if err != nil {
 		return nil, err
@@ -43,6 +45,11 @@ func ReadInstanceCommandsFromYAML(filePath string) ([]Command, error) {
 	var config CommandConfig
 	if err := yaml.Unmarshal(yamlFile, &config); err != nil {
 		return nil, err
+	}
+
+	// Update descriptions relative to the instance name
+	for i := range config.InstanceCommands {
+		config.InstanceCommands[i].Description = fmt.Sprintf("%s: %s", instanceArg, config.InstanceCommands[i].Description)
 	}
 
 	return config.InstanceCommands, nil
@@ -62,11 +69,10 @@ func ReadServerCommandsFromYAML(filePath string) ([]Command, error) {
 
 	return config.ServerCommands, nil
 }
-
-func ReadCommandsFromYAML(filePath string) ([]Command, error) {
+func ReadCommandsFromYAML(filePath, instanceArg string) ([]Command, error) {
 	commands := make([]Command, 0)
 
-	instanceCommands, err := ReadInstanceCommandsFromYAML(filePath)
+	instanceCommands, err := ReadInstanceCommandsFromYAML(filePath, instanceArg)
 	if err != nil {
 		return nil, err
 	}
@@ -81,14 +87,18 @@ func ReadCommandsFromYAML(filePath string) ([]Command, error) {
 	return commands, nil
 }
 
-func ExecuteShellCommand(command string) (string, error) {
+func ExecuteShellCommand(command string) (string, string, error) {
 	cmd := exec.Command("sh", "-c", command)
-	output, err := cmd.Output()
+	var stdout, stderr bytes.Buffer
+	cmd.Stdout = &stdout
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
 	if err != nil {
-		return "", err
+		return stdout.String(), stderr.String(), err
 	}
 
-	return string(output), nil
+	return stdout.String(), stderr.String(), nil
 }
 
 // Function to execute commands and encode output to Base64
@@ -96,7 +106,7 @@ func ExecuteAndEncodeCommands(commands []Command) ([]string, error) {
 	var base64Outputs []string
 
 	for _, cmd := range commands {
-		output, err := ExecuteShellCommand(cmd.Command)
+		output, _, err := ExecuteShellCommand(cmd.Command)
 		if err != nil {
 			return nil, err
 		}

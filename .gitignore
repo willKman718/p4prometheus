@@ -11,6 +11,6 @@
 
 scripts/postproc_cmds_sh.sh
 
-*.sum
 
-*.mod
+
+scripts/command-runner/output.json

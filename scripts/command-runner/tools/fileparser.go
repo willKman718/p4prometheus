@@ -3,6 +3,8 @@ package tools
 import (
 	"fmt"
 	"io/ioutil"
+
+	//	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v2"
@@ -28,7 +30,7 @@ type FileConfig struct {
 
 // func FileParserFromYAMLConfigServer(configFilePath string) error {
 func FileParserFromYAMLConfigServer(configFilePath string, outputJSONFilePath string) error {
-	fmt.Println("I'm the fileParser config server")
+	//	fmt.Println("I'm the fileParser config server")
 	// Read and parse the YAML configuration file
 	config, err := readYAMLConfig(configFilePath)
 	if err != nil {
@@ -54,7 +56,7 @@ func FileParserFromYAMLConfigServer(configFilePath string, outputJSONFilePath st
 
 // Separate function for instance-level parsing
 func FileParserFromYAMLConfigInstance(configFilePath, outputFilePath, instance string) error {
-	fmt.Println("I'm the fileParser config instance")
+	//	fmt.Println("I'm the fileParser config instance")
 	// Read and parse the YAML configuration file
 	config, err := readYAMLConfig(configFilePath)
 	if err != nil {
@@ -91,13 +93,13 @@ func parseAtServerLevel(filePath string, keywords, sanitizationKeywords []string
 
 	// Process all lines if parseAll is true and keywords is empty
 	if len(keywords) == 0 && parseAll {
-		fmt.Println("Server Level Output for", filePath)
+		//		fmt.Println("Server Level Output for", filePath)
 		//fmt.Println(content)
 		return nil
 	}
 
 	// Process the lines containing the keywords and print them
-	fmt.Println("Server Level Output for", filePath)
+	// fmt.Println("Server Level Output for", filePath)
 	var outputLines []string
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
@@ -111,11 +113,11 @@ func parseAtServerLevel(filePath string, keywords, sanitizationKeywords []string
 		}
 	}
 	// Sanitize the output before printing it
-	sanitizedOutput := sanitizeOutput(strings.Join(outputLines, "\n"), sanitizationKeywords)
+	//sanitizedOutput := sanitizeOutput(strings.Join(outputLines, "\n"), sanitizationKeywords)
 
 	// Print the sanitized output
 	//fmt.Println(sanitizedOutput)
-	fmt.Println("Based:", EncodeToBase64(sanitizedOutput))
+	//fmt.Println("Based:", EncodeToBase64(sanitizedOutput))
 	// Call the function to append parsed data for server level
 	if err := AppendServerParsedData(filePath, keywords, sanitizationKeywords, parseAll, outputFilePath); err != nil {
 		return err
@@ -135,13 +137,13 @@ func parseAtInstanceLevel(filePath string, keywords, sanitizationKeywords []stri
 
 	// Process all lines if parseAll is true and keywords is empty
 	if len(keywords) == 0 && parseAll {
-		fmt.Println("Instance Level Output for", filePath)
+		//fmt.Println("Instance Level Output for", filePath)
 		//fmt.Println(content)
 		return nil
 	}
 
 	// Process the lines containing the keywords and print them
-	fmt.Println("Instance Level Output for", filePath)
+	//fmt.Println("Instance Level Output for", filePath)
 	var outputLines []string
 	lines := strings.Split(content, "\n")
 	for _, line := range lines {
@@ -156,12 +158,12 @@ func parseAtInstanceLevel(filePath string, keywords, sanitizationKeywords []stri
 	}
 
 	// Sanitize the output before printing it
-	sanitizedOutput := sanitizeOutput(strings.Join(outputLines, "\n"), sanitizationKeywords)
+	//sanitizedOutput := sanitizeOutput(strings.Join(outputLines, "\n"), sanitizationKeywords)
 
 	// Print the sanitized output
-	fmt.Println("Sanitized Output:")
+	//fmt.Println("Sanitized Output:")
 	//fmt.Println(sanitizedOutput)
-	fmt.Println("Based:", EncodeToBase64(sanitizedOutput))
+	//fmt.Println("Based:", EncodeToBase64(sanitizedOutput))
 	// Call the function to append parsed data for instance level
 	if err := AppendInstanceParsedData(filePath, keywords, sanitizationKeywords, parseAll, outputFilePath, instanceArg); err != nil {
 		return err
@@ -172,6 +174,7 @@ func parseAtInstanceLevel(filePath string, keywords, sanitizationKeywords []stri
 // Sanitize the output as needed before appending to the output file.
 func sanitizeOutput(output string, sanitizationKeywords []string) string {
 	// Add your sanitization logic here.
+	// For example, you can remove lines containing the sanitization keywords from the output.
 	var sanitizedOutputLines []string
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
@@ -190,6 +193,13 @@ func sanitizeOutput(output string, sanitizationKeywords []string) string {
 }
 
 func readYAMLConfig(configFilePath string) (*FileParserConfig, error) {
+	// Print the absolute path of the config file for debugging
+	/*	absConfigPath, err := filepath.Abs(configFilePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get absolute path of config file: %w", err)
+		}
+		fmt.Println("Absolute path of the config file:", absConfigPath)
+	*/
 	// Read the content of the YAML configuration file
 	content, err := ioutil.ReadFile(configFilePath)
 	if err != nil {
