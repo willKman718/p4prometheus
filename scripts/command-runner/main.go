@@ -20,10 +20,11 @@ type Config struct {
 }
 
 var (
-	outputJSONFilePath   string
-	yamlCommandsFilePath string
-	cloudProvider        string
-	configFilePath       string
+	outputJSONFilePath     string
+	yamlCommandsFilePath   string
+	yamlFileparserFilePath string
+	cloudProvider          string
+	configFilePath         string
 )
 
 func init() {
@@ -39,7 +40,7 @@ func init() {
 		flag.PrintDefaults()
 	}
 	// Modify the outputJSONFilePath to write to the "output" directory
-	outputJSONFilePath = "output/out.json"
+	//outputJSONFilePath = "output/out.json"
 
 }
 
@@ -87,7 +88,10 @@ func main() {
 	// Retrieve the paths from the config struct
 	configsDir := filepath.Dir(configFilePath)
 	yamlCommandsFilePath = filepath.Join(configsDir, config.CommandsYAMLPath)
-	outputJSONFilePath = filepath.Join(config.OutputJSONPath)
+	yamlFileparserFilePath = filepath.Join(configsDir, config.FileParserYAMLPath)
+	if outputJSONFilePath == "" {
+		outputJSONFilePath = filepath.Join(config.OutputJSONPath)
+	}
 
 	// Get absolute path for "configs/commands.yaml"
 	//, err := getAbsolutePath(configsDir, config.CommandsYAMLPath)
@@ -232,7 +236,7 @@ func main() {
 		}
 		// File parsing for the instance level
 		//fmt.Println("File Parser YAML Path (Instance):", config.FileParserYAMLPath) // Print the file parser YAML path for instance
-		err = tools.FileParserFromYAMLConfigInstance(config.FileParserYAMLPath, outputJSONFilePath, instanceArg)
+		err = tools.FileParserFromYAMLConfigInstance(yamlFileparserFilePath, outputJSONFilePath, instanceArg)
 		if err != nil {
 			fmt.Println("Error parsing files at the instance level:", err)
 			os.Exit(1)
