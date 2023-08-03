@@ -399,21 +399,21 @@ iterations=0
 max_iterations=10
 STATUS=1
 
-#Disabling for testing
-#while [ $STATUS -ne 0 ]; do
-#    sleep 1
-#    ((iterations=$iterations+1))
-#    log "Pushing Support data"
-#    result=$(curl --connect-timeout $autoCloudTimeout --retry 5 --user "$metrics_user:$metrics_passwd" --data-binary "@$TempSMd" "$metrics_host/support/?customer=$metrics_customer&instance=$metrics_instance")
-#    STATUS=0
-#    log "Checking result: $result"
-#    if [[ "$result" = '{"message":"invalid username or password"}' ]]; then
-#        STATUS=1
-#        log "Retrying due to temporary password failure"
-#    fi
-#    if [ "$iterations" -ge "$max_iterations" ]; then
-#        log "Push loop iterations exceeded"
-#        exit 1
-#    fi
-#done
+#push to datapushgateway
+while [ $STATUS -ne 0 ]; do
+    sleep 1
+    ((iterations=$iterations+1))
+    log "Pushing Support data"
+    result=$(curl --connect-timeout $autoCloudTimeout --retry 5 --user "$metrics_user:$metrics_passwd" --data-binary "@$TempLog" "$metrics_host/json/?customer=$metrics_customer&instance=$metrics_instance")
+    STATUS=0
+    log "Checking result: $result"
+    if [[ "$result" = '{"message":"invalid username or password"}' ]]; then
+        STATUS=1
+        log "Retrying due to temporary password failure"
+    fi
+    if [ "$iterations" -ge "$max_iterations" ]; then
+        log "Push loop iterations exceeded"
+        exit 1
+    fi
+done
 popd
