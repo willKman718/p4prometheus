@@ -27,7 +27,7 @@ type SortConfig struct {
 }
 
 // CreateMarkdownFiles generates Markdown files based on the grouped data.
-func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortConfig *SortConfig, logger *logrus.Logger) error {
+func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortConfig *SortConfig, logger *logrus.Logger, customer string) error {
 	for fileName, items := range groupedData {
 		// Find the directory for the current file from the sort.yaml configuration
 		var directory string
@@ -45,7 +45,7 @@ func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortCo
 		}
 
 		// Create the directory if it doesn't exist
-		dirPath := filepath.Join(dataDir, directory)
+		dirPath := filepath.Join(dataDir, customer, directory)
 		if err := os.MkdirAll(dirPath, os.ModePerm); err != nil {
 			return fmt.Errorf("error creating directory %s: %v", dirPath, err)
 		}
@@ -99,7 +99,7 @@ func LoadSortConfig(configFile string) (*SortConfig, error) {
 }
 
 // ProcessDataMap is a function to process the JSON data map based on the sort.yaml configuration.
-func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logger *logrus.Logger) {
+func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logger *logrus.Logger, customer string) {
 	// Load the sort.yaml configuration
 	sortConfig, err := LoadSortConfig(configFile)
 	if err != nil {
@@ -150,7 +150,7 @@ func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logge
 	}
 
 	// Call the CreateMarkdownFiles function to generate Markdown files
-	err = CreateMarkdownFiles(dataDir, groupedData, sortConfig, logger)
+	err = CreateMarkdownFiles(dataDir, groupedData, sortConfig, logger, customer)
 	if err != nil {
 		fmt.Printf("Error creating Markdown files: %v\n", err)
 	}
@@ -171,7 +171,8 @@ func HandleJSONData(w http.ResponseWriter, req *http.Request, logger *logrus.Log
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
+	query := req.URL.Query()
+	customer := query.Get("customer")
 	// Process JSON data
 	var jsonData []map[string]interface{}
 	decoder := json.NewDecoder(req.Body)
@@ -199,7 +200,7 @@ func HandleJSONData(w http.ResponseWriter, req *http.Request, logger *logrus.Log
 
 	// Call the ProcessDataMap function to work with the data map
 	//	ProcessDataMap(dataMap, configFile, dataDir)
-	ProcessDataMap(dataMap, configFile, dataDir, logger)
+	ProcessDataMap(dataMap, configFile, dataDir, logger, customer)
 	// Now you can process each object in the JSON array differently.
 	//	for _, dataItem := range jsonData {
 	//
