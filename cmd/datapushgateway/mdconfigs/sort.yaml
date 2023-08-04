@@ -20,3 +20,8 @@ file_configs:
     monitor_tags:
       - tag3
       - tag4
+  - file_name: file5-%INSTANCE%
+    directory: directory5/servers
+    monitor_tags:
+      - tag3
+      - tag4
