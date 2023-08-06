@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -27,16 +28,18 @@ type SortConfig struct {
 }
 
 // CreateMarkdownFiles generates Markdown files based on the grouped data.
+// CreateMarkdownFiles generates Markdown files based on the grouped data.
 func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortConfig *SortConfig, logger *logrus.Logger, customer string, instance string) error {
-	for fileName, items := range groupedData {
-		// Find the directory for the current file from the sort.yaml configuration
-		var directory string
-		for _, fileConfig := range sortConfig.FileConfigs {
-			if fileConfig.FileName == fileName {
-				directory = fileConfig.Directory
-				break
-			}
-		}
+	// Create a map to store the directory for each file name
+	dirMap := make(map[string]string)
+	for _, fileConfig := range sortConfig.FileConfigs {
+		dirMap[fileConfig.FileName] = fileConfig.Directory
+	}
+
+	// Iterate over the FileConfigs in the correct order
+	for _, fileConfig := range sortConfig.FileConfigs {
+		fileName := fileConfig.FileName
+		directory := dirMap[fileName]
 
 		// If the directory is not found, log an error and continue to the next file
 		if directory == "" {
@@ -57,6 +60,28 @@ func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortCo
 			return fmt.Errorf("error creating Markdown file %s: %v", filePath, err)
 		}
 		defer file.Close()
+
+		// Get the items for the current file name and sort them based on the order specified in sort.yaml
+		items := groupedData[fileName]
+		sort.SliceStable(items, func(i, j int) bool {
+			item1Data := make(map[string]interface{})
+			item2Data := make(map[string]interface{})
+			if err := json.Unmarshal([]byte(items[i]), &item1Data); err != nil {
+				logger.Errorf("Error unmarshaling item data: %v", err)
+				return false
+			}
+			if err := json.Unmarshal([]byte(items[j]), &item2Data); err != nil {
+				logger.Errorf("Error unmarshaling item data: %v", err)
+				return false
+			}
+			monitorTag1 := item1Data["monitor_tag"].(string)
+			monitorTag2 := item2Data["monitor_tag"].(string)
+
+			// Find the index of the tags in the sorted list
+			indexI := findIndex(fileConfig.MonitorTags, monitorTag1)
+			indexJ := findIndex(fileConfig.MonitorTags, monitorTag2)
+			return indexI < indexJ
+		})
 
 		// Write the Markdown content to the file
 		for _, item := range items {
@@ -81,6 +106,16 @@ func CreateMarkdownFiles(dataDir string, groupedData map[string][]string, sortCo
 		}
 	}
 	return nil
+}
+
+// findIndex finds the index of a string in a slice of strings.
+func findIndex(slice []string, str string) int {
+	for i, s := range slice {
+		if s == str {
+			return i
+		}
+	}
+	return -1
 }
 
 // LoadSortConfig reads and parses the sort.yaml file and returns the parsed data.
@@ -114,7 +149,13 @@ func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logge
 	// Create a map to group data by monitor tags specified in the sort.yaml
 	groupedData := make(map[string][]string)
 
-	// Group the data based on monitor tags
+	// Iterate over the FileConfigs and keep track of the tag order
+	tagOrder := make([]string, 0)
+	for _, fileConfig := range sortConfig.FileConfigs {
+		tagOrder = append(tagOrder, fileConfig.MonitorTags...)
+	}
+
+	// Group the data based on monitor tags and follow the tag order
 	for key, value := range dataMap {
 		// Parse the JSON data for each item
 		var itemData map[string]interface{}
@@ -132,13 +173,14 @@ func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logge
 		}
 
 		// Check if the monitor tag is specified in the sort.yaml
-		for _, fileConfig := range sortConfig.FileConfigs {
-			// Check for each tag in the same order as specified in the sort.yaml
-			for _, tag := range fileConfig.MonitorTags {
-				if strings.EqualFold(tag, monitorTag) {
-					groupedData[fileConfig.FileName] = append(groupedData[fileConfig.FileName], value)
-					break
+		for _, tag := range tagOrder {
+			if strings.EqualFold(tag, monitorTag) {
+				for _, fileConfig := range sortConfig.FileConfigs {
+					if contains(fileConfig.MonitorTags, tag) {
+						groupedData[fileConfig.FileName] = append(groupedData[fileConfig.FileName], value)
+					}
 				}
+				break
 			}
 		}
 	}
@@ -160,6 +202,16 @@ func ProcessDataMap(dataMap map[string]string, configFile, dataDir string, logge
 	}
 
 	// Your specific processing logic goes here.
+}
+
+// contains checks if a string is present in a slice of strings.
+func contains(slice []string, str string) bool {
+	for _, s := range slice {
+		if s == str {
+			return true
+		}
+	}
+	return false
 }
 
 func HandleJSONData(w http.ResponseWriter, req *http.Request, logger *logrus.Logger, dataDir string) {
